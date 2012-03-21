@@ -41,10 +41,19 @@ module Rails3JQueryAutocomplete
     # end
     #
     module ClassMethods
-      def autocomplete(object, method, options = {})
-        define_method("autocomplete_#{object}_#{method}") do
+      def autocomplete(*args)
+        options = args.extract_options!
+        object, methods = case args.size
+          when 2
+            args
+          when 1
+            [controller_name.singularize, args[0]]
+          end
+        options = args.extract_options!
+        define_method("autocomplete_#{args.flatten.join('_')}") do
 
-          method = options[:column_name] if options.has_key?(:column_name)
+          methods = options[:column_name] if options.has_key?(:column_name)
+          methods = Array.wrap(methods)
 
           term = params[:term]
 
@@ -52,12 +61,12 @@ module Rails3JQueryAutocomplete
             #allow specifying fully qualified class name for model object
             class_name = options[:class_name] || object
             items = get_autocomplete_items(:model => get_object(class_name), \
-              :options => options, :term => term, :method => method)
+              :options => options, :term => term, :methods => methods)
           else
             items = {}
           end
 
-          render :json => json_for_autocomplete(items, options[:display_value] ||= method, options[:extra_data])
+          render :json => json_for_autocomplete(items, options[:display_value] ||= methods, options[:extra_data])
         end
       end
     end
@@ -81,9 +90,14 @@ module Rails3JQueryAutocomplete
     # Can be overriden to show whatever you like
     # Hash also includes a key/value pair for each method in extra_data
     #
-    def json_for_autocomplete(items, method, extra_data=[])
+    def json_for_autocomplete(items, methods, extra_data=[])
       items.collect do |item|
-        hash = {"id" => item.id.to_s, "label" => item.send(method), "value" => item.send(method)}
+        label = methods.map { |m| item.send(m) }.join(" ")
+        hash = {
+            "id"    => item.id.to_s, 
+            "label" => label,
+            "value" => label
+        }
         extra_data.each do |datum|
           hash[datum] = item.send(datum)
         end if extra_data
