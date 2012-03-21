@@ -18,6 +18,14 @@ begin
         class AutocompleteInput
           include Base
           include Base::Stringish
+          
+          def input_html_options
+            opts = super
+            opts[:data] ||= {}
+            opts[:data]['id-element']      = options[:id_element] if options.has_key?(:id_element)
+            opts[:data]['id-element-diff'] = options[:id_element_diff] if options.has_key?(:id_element_diff)
+            opts
+          end
 
           def to_html
             input_wrapping do
